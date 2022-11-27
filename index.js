@@ -12,24 +12,21 @@ app.use(cors());
 app.use(express.json());
 
 function verifyJWT(req, res, next) {
-
   const authHeader = req.headers.authorization;
   if (!authHeader) {
-      return res.status(401).send('unauthorized access');
+    return res.status(401).send("unauthorized access");
   }
 
-  const token = authHeader.split(' ')[1];
+  const token = authHeader.split(" ")[1];
 
   jwt.verify(token, process.env.ACCESS_TOKEN, function (err, decoded) {
-      if (err) {
-          return res.status(403).send({ message: 'forbidden access' })
-      }
-      req.decoded = decoded;
-      next();
-  })
-
+    if (err) {
+      return res.status(403).send({ message: "forbidden access" });
+    }
+    req.decoded = decoded;
+    next();
+  });
 }
-
 
 const run = async () => {
   try {
@@ -41,6 +38,7 @@ const run = async () => {
     });
 
     const carsCollection = client.db("fastResale").collection("allCars");
+
     //                                                                             .updateMany(
     //                                                                              {currentDate:true},
     //                                                                              {$set: {
@@ -66,22 +64,34 @@ const run = async () => {
       res.send(cars);
     });
 
-    app.get('/bookings', verifyJWT, async (req, res) => {
+    app.get("/bookings", verifyJWT, async (req, res) => {
       const email = req.query.email;
       const decodedEmail = req.decoded.email;
 
       if (email !== decodedEmail) {
-          return res.status(403).send({ message: 'forbidden access' });
+        return res.status(403).send({ message: "forbidden access" });
       }
 
       const query = { email: email };
       const bookings = await bookingsCollection.find(query).toArray();
       res.send(bookings);
-  });
+    });
+
+    // allCarsSpecialty
+
+    app.get("/allCarsSpecialty", async (req, res) => {
+      const query = {};
+      const result = await carsCollection
+        .find(query)
+        .project({ name: 1 })
+        .toArray();
+      res.send(result);
+    });
+
     //POST
     app.post("/bookings", async (req, res) => {
       const booking = req.body;
-    
+
       const query = {
         carName: booking.carName,
         email: booking.email,
@@ -96,6 +106,15 @@ const run = async () => {
       const result = await bookingsCollection.insertOne(booking);
       res.send(result);
     });
+
+    //Delete
+    app.delete("/bookings/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: ObjectId(id) };
+      const result = await bookingsCollection.deleteOne(query);
+      res.send(result);
+    });
+
     //JWT
     app.get("/jwt", async (req, res) => {
       const email = req.query.email;
@@ -107,25 +126,24 @@ const run = async () => {
         });
         return res.send({ accessToken: token });
       }
-  
+
       res.status(403).send({ accessToken: "" });
     });
 
     //Users
-    app.get('/users',async(req, res)=>{
+    app.get("/users", async (req, res) => {
       const query = {};
       const users = await usersCollection.find(query).toArray();
-      res.send(users)
-    })
+      res.send(users);
+    });
 
-    app.get('/users/admin/:email', async(req,res)=>{
+    app.get("/users/admin/:email", async (req, res) => {
       const email = req.params.email;
-   
-      const query = {email:email}
-      const user = await usersCollection.findOne(query)
-      res.send({isAdmin: user?.role === 'admin'})
-    })
 
+      const query = { email: email };
+      const user = await usersCollection.findOne(query);
+      res.send({ isAdmin: user?.role === "admin" });
+    });
 
     app.post("/users", async (req, res) => {
       const user = req.body;
@@ -134,36 +152,65 @@ const run = async () => {
       res.send(result);
     });
 
-    app.put('/users/admin/:id', verifyJWT,async(req,res)=>{
+    app.put("/users/admin/:id", verifyJWT, async (req, res) => {
       const decodedEmail = req.decoded.email;
 
-      const query  = {email: decodedEmail}
+      const query = { email: decodedEmail };
 
-      const user = await usersCollection.findOne(query)
-      if(user?.role !== 'admin'){
-        return res.status(403).send({message: 'forbidden access'})
+      const user = await usersCollection.findOne(query);
+      if (user?.role !== "admin") {
+        return res.status(403).send({ message: "forbidden access" });
       }
       const id = req.params.id;
-      const filter = {_id:ObjectId(id)}
-      const options = {upsert:true}
+      const filter = { _id: ObjectId(id) };
+      const options = { upsert: true };
       const updatedDoc = {
-        $set:{
-          role:'admin'
-
-        }
-      }
-      const result = await usersCollection.updateOne(filter, updatedDoc, options)
+        $set: {
+          role: "admin",
+        },
+      };
+      const result = await usersCollection.updateOne(
+        filter,
+        updatedDoc,
+        options
+      );
       res.send(result);
+    });
 
-    })
+    //add product
+    app.put("/allCars", async (req, res) => {
+      const product = req.body;
+      const filter = { _id: ObjectId(allcar.name) };
+      const options = { upsert: true };
+      const updatedDoc = {
+        $push: {
+          allcar: product,
+        },
+      };
+      const result = await carsCollection.updateOne(
+        filter,
+        updatedDoc,
+        options
+      );
+      res.send(result);
+    });
 
+    //seller
+    app.get("/users/seller/:email", async (req, res) => {
+      const email = req.params.email;
+      const query = { email };
+      const user = await usersCollection.findOne(query);
+      res.send({ isSeller: user?.role === "Seller" });
+    });
 
-
-
-
-
-
-
+    //all user delete
+    app.delete("/users/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: ObjectId(id) };
+      const result = await usersCollection.deleteOne(filter);
+      res.send(result);
+    });
+    
 
 
 
