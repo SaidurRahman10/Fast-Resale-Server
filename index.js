@@ -49,6 +49,17 @@ const run = async () => {
     const bookingsCollection = client.db("fastResale").collection("bookings");
     const usersCollection = client.db("fastResale").collection("users");
 
+    const productCollection = client.db("fastResale").collection("product");
+
+
+
+    
+    
+
+
+
+
+
     app.get("/allCars", async (req, res) => {
       // const selectedCarName = req.body.carName;
       const query = {};
@@ -180,7 +191,7 @@ const run = async () => {
     //add product
     app.put("/allCars", async (req, res) => {
       const product = req.body;
-      const filter = { _id: ObjectId(allcar.name) };
+      const filter = { _id: ObjectId(product.categorie) };
       const options = { upsert: true };
       const updatedDoc = {
         $push: {
@@ -210,15 +221,24 @@ const run = async () => {
       const result = await usersCollection.deleteOne(filter);
       res.send(result);
     });
+
+    // my product
+    app.post('/product', async (req, res) => {
+      const product = req.body;
+      const result = await productCollection.insertOne(product);
+      res.send(result);
+    })
+    
+    app.get('/product', async (req, res) => {
+      const query = {};
+      const options = await productCollection.find(query).toArray();
+      res.send(options);
+    })
     
 
-
-
-
-
   } finally {
-  }
-};
+  }  
+};  
 run().catch((err) => console.log(err));
 
 app.get("/", (req, res) => {
